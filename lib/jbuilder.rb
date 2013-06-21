@@ -71,12 +71,16 @@ class Jbuilder < JbuilderProxy
   BLANK = ::Object.new
 
   def set!(key, value = BLANK, *args, &block)
+    if args.any? && args[0].is_a?(::Hash)
+      @except = args[0].delete(:except).map(&:to_sym) if args[0][:except]
+      @only   = args[0].delete(:only).map(&:to_sym)   if args[0][:only]
+    end
 
     result = if block
       if BLANK != value
         # json.comments @post.comments { |comment| ... }
         # { "comments": [ { ... }, { ... } ] }
-        _scope{ array! value, *args, &block }
+        _scope{ array! value, &block }
       else
         # json.comments { ... }
         # { "comments": ... }
@@ -241,14 +245,8 @@ class Jbuilder < JbuilderProxy
   #
   #   [1,2,3]
   def array!(collection, *attributes, &block)
-    @except = []
-
     @attributes = if block && block.arity == 2
       _two_arguments_map_collection(collection, &block)
-    elsif block && attributes.any? && attributes[0].is_a?(::Hash)
-      @except = attributes[0].delete(:except).map(&:to_sym) if attributes[0][:except]
-      @only   = attributes[0].delete(:only).map(&:to_sym)   if attributes[0][:only]
-      _map_collection(collection, &block)
     elsif block
       _map_collection(collection, &block)
     elsif attributes.any?

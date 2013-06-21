@@ -405,6 +405,29 @@ class JbuilderTest < ActiveSupport::TestCase
     assert_equal   2, parsed['comments'].second['id']
   end
 
+  test 'extract attributes directly from array except listed keys nested' do
+    comments = [ Comment.new('hello', 1), Comment.new('world', 2) ]
+
+    json = Jbuilder.encode do |json|
+      json.comments comments, except: [:nested_comments] do |comment|
+        json.content comment.content
+        json.id comment.id
+        json.nested_comments comments do |nested_comment|
+          json.content comment.content
+        end
+      end
+    end
+
+    parsed = MultiJson.load(json)
+    assert_equal 'hello', parsed['comments'].first['content']
+    assert_equal       1, parsed['comments'].first['id']
+    assert_equal     nil, parsed['comments'].first['nested_comments']
+
+    assert_equal 'world', parsed['comments'].second['content']
+    assert_equal       2, parsed['comments'].second['id']
+    assert_equal     nil, parsed['comments'].first['nested_comments']
+  end
+
   test 'extract attributes directly from array only listed keys' do
     comments = [ Comment.new('hello', 1), Comment.new('world', 2) ]
 
