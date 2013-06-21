@@ -60,7 +60,6 @@ class Jbuilder < JbuilderProxy
 
   def initialize(*args, &block)
     @attributes = ::ActiveSupport::OrderedHash.new
-    @except     = []
 
     options = args.extract_options!
     @key_formatter = options.fetch(:key_formatter, @@key_formatter.clone)
@@ -70,26 +69,25 @@ class Jbuilder < JbuilderProxy
 
   BLANK = ::Object.new
 
-  def set!(key, value = BLANK, *args, &block)
-    if args.any? && args[0].is_a?(::Hash)
-      @except = args[0].delete(:except).map(&:to_sym) if args[0][:except]
-      @only   = args[0].delete(:only).map(&:to_sym)   if args[0][:only]
-    end
+  def set_only_or_except!(options = {})
+    @except = [options.delete(:except)].flatten.map(&:to_s) if options[:except]
+    @only   = [options.delete(:only)].flatten.map(&:to_s)   if options[:only]
+  end
 
+  def set!(key, value = BLANK, *args, &block)
     result = if block
       if BLANK != value
         if !(::Jbuilder === value) && value.is_a?(::Hash)
           # json.comments only: [:id] { ... }
           # json.comments except: [:id] { ... }
           # { "comments": ... }
-          @except = value.delete(:except).map(&:to_sym) if value[:except]
-          @only   = value.delete(:only).map(&:to_sym)   if value[:only]
-
+          set_only_or_except! value
           _scope { yield self; @only = nil }
         else
           # json.comments @post.comments { |comment| ... }
           # { "comments": [ { ... }, { ... } ] }
-          _scope{ array! value, &block }
+          set_only_or_except! args[0] if args.any? && args[0].is_a?(::Hash)
+          _scope{ array! value, &block; @only = nil }
         end
       else
         # json.comments { ... }
@@ -264,8 +262,6 @@ class Jbuilder < JbuilderProxy
     else
       collection
     end
-
-    @only = nil
   end
 
   # Extracts the mentioned attributes or hash elements from the passed object and turns them into attributes of the JSON.
@@ -323,8 +319,8 @@ class Jbuilder < JbuilderProxy
     def _set_value(key, value)
       raise NullError, key if @attributes.nil?
 
-      return if @except.include?(key)
-      return if @only && !@only.include?(key)
+      return if @except && @except.include?(key.to_s)
+      return if @only   && @only.exclude?(key.to_s)
 
       unless @ignore_nil && value.nil?
         @attributes[@key_formatter.format(key)] = value
