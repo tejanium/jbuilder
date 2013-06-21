@@ -78,9 +78,19 @@ class Jbuilder < JbuilderProxy
 
     result = if block
       if BLANK != value
-        # json.comments @post.comments { |comment| ... }
-        # { "comments": [ { ... }, { ... } ] }
-        _scope{ array! value, &block }
+        if !(::Jbuilder === value) && value.is_a?(::Hash)
+          # json.comments only: [:id] { ... }
+          # json.comments except: [:id] { ... }
+          # { "comments": ... }
+          @except = value.delete(:except).map(&:to_sym) if value[:except]
+          @only   = value.delete(:only).map(&:to_sym)   if value[:only]
+
+          _scope { yield self; @only = nil }
+        else
+          # json.comments @post.comments { |comment| ... }
+          # { "comments": [ { ... }, { ... } ] }
+          _scope{ array! value, &block }
+        end
       else
         # json.comments { ... }
         # { "comments": ... }

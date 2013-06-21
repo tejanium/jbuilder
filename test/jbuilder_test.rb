@@ -112,6 +112,32 @@ class JbuilderTest < ActiveSupport::TestCase
     assert_equal 32, parsed['author']['age']
   end
 
+  test 'nesting single child with block with except' do
+    json = Jbuilder.encode do |json|
+      json.author except: [:name] do
+        json.name 'David'
+        json.age  32
+      end
+    end
+
+    parsed = MultiJson.load(json)
+    assert_equal nil, parsed['author']['name']
+    assert_equal  32, parsed['author']['age']
+  end
+
+  test 'nesting single child with block with only' do
+    json = Jbuilder.encode do |json|
+      json.author only: [:name] do
+        json.name 'David'
+        json.age  32
+      end
+    end
+
+    parsed = MultiJson.load(json)
+    assert_equal 'David', parsed['author']['name']
+    assert_equal     nil, parsed['author']['age']
+  end
+
   test 'nesting multiple children with block' do
     json = Jbuilder.encode do |json|
       json.comments do
