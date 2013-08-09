@@ -283,9 +283,9 @@ class Jbuilder < JbuilderProxy
   #   json.(@person, :name, :age)
   def extract!(object, *attributes)
     if ::Hash === object
-      attributes.each { |attribute| _set_value attribute, object.fetch(attribute) }
+      _extract_hash_values(object, *attributes)
     else
-      attributes.each { |attribute| _set_value attribute, object.send(attribute) }
+      _extract_method_values(object, *attributes)
     end
   end
 
@@ -315,6 +315,22 @@ class Jbuilder < JbuilderProxy
   end
 
   private
+
+    def  _extract_hash_values(object, *attributes)
+      attributes.each{ |key| _set_value key, object.fetch(key) }
+    end
+
+    def _extract_method_values(object, *attributes)
+      attributes.each do |method_name|
+        unless object.respond_to?(method_name)
+          message = "Private method #{method_name.inspect} was used to " +
+            'extract value. This will be an error in future versions of Jbuilder'
+        end
+
+        _set_value method_name, object.send(method_name)
+        ::ActiveSupport::Deprecation.warn message if message
+      end
+    end
 
     def _set_value(key, value)
       raise NullError, key if @attributes.nil?

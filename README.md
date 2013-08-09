@@ -130,7 +130,6 @@ end
 # => [ { "id": 1 }, { "id": 2 } ]
 ```
 
-
 Jbuilder objects can be directly nested inside each other.  Useful for composing objects.
 
 ``` ruby
@@ -175,12 +174,30 @@ end
 if current_user.admin?
   json.visitors calculate_visitors(@message)
 end
+```
 
-# You can use partials as well. The following line will render the file
-# RAILS_ROOT/app/views/api/comments/_comments.json.jbuilder, and set a local variable
-# 'comments' with all this message's comments, which you can use inside
-# the partial.
-json.partial! 'api/comments/comments', comments: @message.comments
+
+You can use partials as well. The following will render the file
+`views/comments/_comments.json.jbuilder`, and set a local variable
+`comments` with all this message's comments, which you can use inside
+the partial.
+
+```ruby
+json.partial! 'comments/comments', comments: @message.comments
+```
+
+It's also possible to render collections of partials:
+
+```ruby
+json.array! @posts, partial: 'posts/post', as: :post
+
+# or
+
+json.partial! 'posts/post', collection: @posts, as: :post
+
+# or
+
+json.partial! partial: 'posts/post', collection: @posts, as: :post
 ```
 
 You can explicitly make Jbuilder object return null if you want:
@@ -194,6 +211,14 @@ json.author do
     json.first_name @post.author_first_name
     json.last_name @post.author_last_name
   end
+end
+```
+
+Fragment caching is supported, it uses `Rails.cache` and works like caching in HTML templates:
+
+```ruby
+json.cache! ['v1', @person], :expires_in => 10.minutes do
+  json.extract! @person, :name, :age
 end
 ```
 
@@ -214,6 +239,7 @@ Jbuilder.key_format :camelize => :lower
 
 Libraries similar to this in some form or another include:
 
+* Active Model Serializers: https://github.com/rails-api/active_model_serializers
 * RABL: https://github.com/nesquena/rabl
 * JsonBuilder: https://github.com/nov/jsonbuilder
 * JSON Builder: https://github.com/dewski/json_builder
